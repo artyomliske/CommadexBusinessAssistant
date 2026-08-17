@@ -19,7 +19,31 @@
 
 ## Архитектура
 
-![Architecture diagram](docs/architecture.png)
+```mermaid
+flowchart LR
+    A[MAX Telegram] --> B[Webhooks]
+    B --> C[Events]
+    C --> D[(PostgreSQL)]
+    C --> E[ARQ Worker]
+    E --> F[Agent Pipeline]
+    F --> G[Domain State]
+    G --> H[Review Policy]
+    H --> I[Outbound Queue]
+    I --> A
+    G --> J[Operations Panel]
+    G --> K[Drive Sheets]
+
+    classDef channel fill:#0F172A,stroke:#38BDF8,color:#F8FAFC,stroke-width:2px;
+    classDef process fill:#1E293B,stroke:#818CF8,color:#F8FAFC,stroke-width:2px;
+    classDef data fill:#064E3B,stroke:#34D399,color:#ECFDF5,stroke-width:2px;
+    classDef control fill:#7C2D12,stroke:#FB923C,color:#FFF7ED,stroke-width:2px;
+    classDef ui fill:#4C1D95,stroke:#C4B5FD,color:#F5F3FF,stroke-width:2px;
+    class A channel;
+    class B,C,E,F process;
+    class D,G,K data;
+    class H,I control;
+    class J ui;
+```
 
 Слой каналов намеренно остаётся тонким. После нормализации остальная система работает с доменными событиями, а не со специфичными payload платформы. Исходящее сообщение никогда не отправляется напрямую из LLM-вызова: оно проходит через policy, при необходимости ручное согласование, паузу и финальную проверку состояния.
 
