@@ -8,8 +8,18 @@
 | Privacy by design | | | | | | 
 ## 
 ```mermaid
-flowchart LR
-    I --> A    H --> I[    G --> H[    F --> G[    E --> F[    C --> E[    C --> D[(    B --> C[    A[MAX / Telegram] --> B[
+flowchart TD
+    A[Channels] --> B[Webhooks]
+    B --> C[Events]
+    C --> D[PostgreSQL]
+    C --> E[ARQ Worker]
+    E --> F[Agent Pipeline]
+    F --> G[Domain State]
+    G --> H[Review Policy]
+    H --> I[Outbound Queue]
+    I --> A
+    G --> J[Operations Panel]
+    G --> K[Drive Sheets]
 ```    G --> K[    G --> J[
 
 
