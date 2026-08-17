@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Объекты{% endblock %}
+{% block heading %}Объекты{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">{{ objects | length | count("объект") }}</span>
+{% endblock %}
+
+{% block body %}
+
+{% if not objects %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>Объектов нет.</b>
+    Чаты у вас общие, поэтому объект система узнаёт из текста сообщения —
+    по названиям отсюда. Пока список пуст, узнавать не по чему, и вся
+    переписка уходит в разбор вручную.
+  </span>
+</div>
+{% endif %}
+
+{% if user.can_review %}
+<div class="panel pad">
+  <form method="post" action="/objects" class="row">
+    <input name="address" required maxlength="300" placeholder="Адрес: Ленина 5, кв. 12">
+    <input name="code" maxlength="32" placeholder="код (можно не заполнять)">
+    <button type="submit" class="primary">Завести объект</button>
+  </form>
+  <p class="note">
+    Адрес сразу становится названием для поиска. Как объект зовут иначе —
+    «пятёрка», «ЖК Форум» — добавьте отдельными названиями ниже.
+  </p>
+</div>
+{% endif %}
+
+{% if message %}
+<div class="banner {{ 'ok' if ok else 'danger' }}">{{ message }}</div>
+{% endif %}
+
+{% for o in objects %}
+<div class="panel pad">
+  <div class="row between">
+    <div>
+      <b><a href="/objects/{{ o.id }}">{{ o.address }}</a></b>
+      <span class="mono">{{ o.code }}</span>
+    </div>
+    <span class="sub">
+      {{ o.messages | count("сообщение") }}{% if o.chats %}, {{ o.chats | count("чат") }}{% endif %}
+      {% if o.drive_url %}
+        · <a href="{{ o.drive_url }}" target="_blank" rel="noopener">
+            папка на Диске ↗{% if o.files %} ({{ o.files }}){% endif %}
+          </a>
+      {% elif o.files %}
+        · {{ o.files | count("файл") }}
+      {% endif %}
+    </span>
+  </div>
+
+  <div class="row wrapped">
+    {% for a in o.aliases %}
+      <span class="pill">
+        {{ a.alias }}
+        {% if user.can_review %}
+        <form method="post" action="/objects/aliases/{{ a.id }}/remove" class="inline"
+              data-replace="#result-object-{{ o.id }}">
+          <button type="submit" class="plain" title="убрать название">×</button>
+        </form>
+        {% endif %}
+      </span>
+    {% else %}
+      <span class="sub">названий нет — объект не будет узнан ни в одном сообщении</span>
+    {% endfor %}
+  </div>
+
+  {% if user.can_review %}
+  <form method="post" action="/objects/{{ o.id }}/aliases" class="row"
+        data-replace="#result-object-{{ o.id }}">
+    <input name="alias" required maxlength="200" placeholder="ещё название: пятёрка, ЖК Форум">
+    <button type="submit">Добавить</button>
+  </form>
+  <div class="result" id="result-object-{{ o.id }}"></div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<p class="note">
+  Названия сравниваются по словам, а не по строкам: «ул. Ленина, д. 5»,
+  «Ленина 5» и «ленина-5» — одно и то же. А вот «Ленина 52» и «Ленина 5к2»
+  различаются, и путать их система не станет.
+</p>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% for i in items %}
+<tr class="{{ 'attention' if i.needs_human }}">
+  <td>
+    {% if i.needs_human %}<span class="dot danger" title="нужен человек"></span>
+    {% elif i.applied %}<span class="dot ok" title="применено"></span>
+    {% else %}<span class="dot" title="принято"></span>{% endif %}
+  </td>
+  <td class="tight">{{ i.occurred_at | dt }}</td>
+  <td class="tight">{{ i.object_code or "—" }}</td>
+  <td><span class="mono">{{ i.event_type }}</span></td>
+  <td class="wrap">{{ i.description }}</td>
+  <td class="num">{% if i.confidence is not none %}{{ '%.2f'|format(i.confidence) }}{% else %}—{% endif %}</td>
+  <td class="tight">
+    {% if i.needs_human %}<span class="pill danger">нужен человек</span>
+    {% elif i.applied %}<span class="pill ok">применено</span>
+    {% else %}<span class="pill">принято</span>{% endif %}
+  </td>
+</tr>
+{% endfor %}
+
+{% if items %}
+{# Кнопка следующей страницы приезжает вместе с фрагментом. #}
+<tr class="more" id="more-{{ items[-1].event_id }}">
+  <td colspan="8">
+    <button type="button" class="plain"
+            data-append="#feed-rows"
+            data-url="/feed/more?before_id={{ items[-1].event_id }}{% if filters.object_id %}&object_id={{ filters.object_id }}{% endif %}{% if filters.event_type %}&event_type={{ filters.event_type }}{% endif %}{% if filters.needs_human %}&needs_human=true{% endif %}{% if filters.facts_only %}&facts_only=true{% endif %}">
+      Показать ещё
+    </button>
+  </td>
+</tr>
+{% endif %}

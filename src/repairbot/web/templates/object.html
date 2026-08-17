@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }}{% endblock %}
+{% block heading %}{{ object.code }}{% endblock %}
+
+{% block headextra %}
+<span class="sub">{{ object.address }}</span>
+<span class="spacer"></span>
+{% if object.spreadsheet_id %}
+  <a href="https://docs.google.com/spreadsheets/d/{{ object.spreadsheet_id }}"
+     target="_blank" rel="noopener">таблица объекта</a>
+{% endif %}
+{% if object.drive_folder_id %}
+  <a href="https://drive.google.com/drive/folders/{{ object.drive_folder_id }}"
+     target="_blank" rel="noopener">файлы объекта</a>
+{% endif %}
+{% endblock %}
+
+{% block body %}
+<section>
+  <div class="metrics">
+    <div class="metric">
+      <span class="v">{{ state.get("current_stage") or "—" }}</span><span class="k">этап</span>
+    </div>
+    <div class="metric">
+      <span class="v">{{ state.get("status") or "—" }}</span><span class="k">состояние работ</span>
+    </div>
+    <div class="metric">
+      <span class="v">{{ (state.get("spent") or 0) | thousands }} ₽</span><span class="k">закуплено</span>
+    </div>
+    <div class="metric {{ 'hot' if pending }}">
+      <span class="v">{{ pending | length }}</span><span class="k">факты на подтверждение</span>
+    </div>
+    <div class="metric {{ 'hot' if state.get('stale_questions_count') }}">
+      <span class="v">{{ state.get("open_questions_count", 0) }}</span><span class="k">открытые вопросы</span>
+    </div>
+  </div>
+</section>
+
+{% if not state.get("projection") %}
+<div class="banner"><span class="dot warn"></span>
+  <span>Состояние ещё не собиралось.</span></div>
+{% endif %}
+
+{% set deviations = state.get("deviations") or [] %}
+{% if deviations %}
+<section>
+  <h2>Отклонения от плана</h2>
+  <div class="panel" style="padding: 4px 16px">
+    <ul class="plain">
+      {% for d in deviations %}
+      <li>
+        <span class="dot danger"></span>
+        <span><b>{{ d.stage }}</b> —
+          {% if d.kind == "stage_overrun" %}
+            идёт {{ d.elapsed_days | count("день") }} при нормативе
+            {{ d.normative_days | count("день") }}, превышение на
+            {{ d.over_by_days | count("день") }}
+          {% else %}
+            начат, но не завершены: {{ d.blocked_by | join(", ") }}
+          {% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <p class="note">Нормативы ориентировочные — до замены на данные заказчика это повод посмотреть, а не приговор.</p>
+</section>
+{% endif %}
+
+{% set contradictions = state.get("contradictions") or [] %}
+{% if contradictions %}
+<section>
+  <h2>Противоречия</h2>
+  <div class="panel">
+    <table class="data">
+      <thead><tr><th>Этап</th><th>Было</th><th>Стало</th><th>Когда</th><th>Источник</th></tr></thead>
+      <tbody>
+      {% for c in contradictions %}
+        <tr class="attention">
+          <td>{{ c.stage }}</td><td>{{ c.was }}</td><td>{{ c.became }}</td>
+          <td class="tight">{{ c.at | isodt }}</td><td><span class="mono">{{ c.source }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% set stages_map = state.get("stages") or {} %}
+{% if stages_map %}
+<section>
+  <h2>Этапы</h2>
+  <div class="panel">
+    <table class="data">
+      <thead><tr><th>Этап</th><th>Состояние</th><th>Помещения</th><th>Источник</th></tr></thead>
+      <tbody>
+      {% for key, s in stages_map.items() %}
+        <tr>
+          <td>{{ s.title }}</td>
+          <td>
+            <span class="pill {{ 'ok' if s.status == 'завершено' else ('warn' if s.status == 'приостановлено' else '') }}">
+              {{ s.status }}</span>
+          </td>
+          <td>{% for room, st in (s.rooms or {}).items() %}{{ room }} — {{ st }}{% if not loop.last %}; {% endif %}{% endfor %}</td>
+          <td><span class="mono">{{ s.source or "—" }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% set questions = state.get("open_questions") or [] %}
+{% if questions %}
+<section>
+  <h2>Открытые вопросы</h2>
+  <div class="panel" style="padding: 4px 16px">
+    <ul class="plain">
+      {% for q in questions %}
+      <li>
+        <span class="dot {{ 'danger' if q.stale else 'warn' }}"></span>
+        <span>{{ q.summary }}</span>
+        <span class="mono">{{ q.age_days | count("день") }} · {{ q.source }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <h2>Журнал объекта</h2>
+  <div class="panel">
+    {% if not feed %}
+      <div class="empty">Событий нет. Проверьте привязку чата: <a href="/chats">Чаты</a></div>
+    {% else %}
+    <table class="data">
+      <thead><tr><th></th><th>Время</th><th>Кто</th><th>Тип</th><th>Описание</th>
+                 <th class="num">Дост.</th></tr></thead>
+      <tbody>
+      {% for i in feed %}
+        <tr class="{{ 'attention' if i.needs_human }}">
+          <td>
+            {% if i.needs_human %}<span class="dot danger"></span>
+            {% elif i.applied %}<span class="dot ok"></span>
+            {% else %}<span class="dot"></span>{% endif %}
+          </td>
+          <td class="tight">{{ i.occurred_at | dt }}</td>
+          <td class="tight">{{ i.author or "—" }}</td>
+          <td><span class="mono">{{ i.event_type }}</span></td>
+          <td class="wrap">{{ i.description }}</td>
+          <td class="num">{% if i.confidence is not none %}{{ '%.2f'|format(i.confidence) }}{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  <p class="note"><a href="/feed?object_id={{ object.id }}">Вся лента по объекту</a></p>
+</section>
+{% endblock %}

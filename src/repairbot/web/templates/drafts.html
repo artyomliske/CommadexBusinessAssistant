@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Черновики{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+{% if user.can_review %}
+  {% if halt_is_failure %}
+  {# Возобновлять нечего: остановки никто не включал, недоступно хранилище. #}
+  {% elif halted %}
+  <form method="post" action="/outbound/resume" data-replace="#halt-result">
+    <button type="submit" class="primary">Возобновить отправку</button>
+  </form>
+  {% else %}
+  <form method="post" action="/outbound/halt" data-replace="#halt-result">
+    <input name="reason" placeholder="причина" maxlength="80">
+    <button type="submit" class="danger">Остановить всё</button>
+  </form>
+  {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="result" id="halt-result"></div>
+
+{% if halt_is_failure %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span>
+    <b>Отправка приостановлена: не отвечает Redis.</b>
+    Состояние аварийной остановки хранится там, и пока его нельзя
+    прочитать, система не отправляет ничего — это сознательный отказ
+    в сторону безопасности, а не сбой панели. Кнопка «Возобновить» здесь
+    не поможет: нужно поднять Redis, после чего отправка вернётся сама.
+  </span>
+</div>
+{% elif halted %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span><b>Отправка остановлена вручную.</b> {{ halted }}</span>
+</div>
+{% endif %}
+
+<section>
+  <h2>Ждут решения — {{ drafts | length }}</h2>
+  {% if not drafts %}
+    <div class="panel"><div class="empty">Черновиков нет.</div></div>
+  {% else %}
+    {% for d in drafts %}
+    <article class="item" id="draft-{{ d.id }}">
+      <div class="meta">
+        <span class="mono">{{ d.intent }}</span>
+        <span class="pill">{{ d.audience }}</span>
+        <span class="mono">{{ d.channel }}:{{ d.channel_chat_id }}</span>
+        <time>{{ d.created_at | dt }}</time>
+      </div>
+
+      <p class="lead">{{ d.text }}</p>
+
+      {% set reasons = (d.reasons or {}).get("reasons") or [] %}
+      {% if reasons %}
+      <ul class="why">
+        {% for r in reasons %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if user.can_review %}
+      <div class="row">
+        <form method="post" action="/drafts/{{ d.id }}/approve"
+              data-replace="#draft-result-{{ d.id }}" data-remove="#draft-{{ d.id }}">
+          <input name="edited_text" placeholder="правка — пусто, чтобы как есть" maxlength="2000">
+          <button type="submit" class="primary">Отправить</button>
+        </form>
+        <form method="post" action="/drafts/{{ d.id }}/reject"
+              data-replace="#draft-result-{{ d.id }}" data-remove="#draft-{{ d.id }}">
+          <input name="reason" placeholder="что не так" maxlength="500">
+          <button type="submit">Отклонить</button>
+        </form>
+      </div>
+      <div class="result" id="draft-result-{{ d.id }}"></div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  {% endif %}
+</section>
+
+<section>
+  <h2>Журнал исходящих</h2>
+  <div class="panel">
+    {% if not audit %}
+      <div class="empty">Наружу ничего не уходило.</div>
+    {% else %}
+    <table class="data">
+      <thead>
+        <tr><th></th><th>Время</th><th>Адресат</th><th>Намерение</th>
+            <th>Текст</th><th>Решение</th><th>Ушло</th></tr>
+      </thead>
+      <tbody>
+      {% for m in audit %}
+        {# Красным — только заблокированное. Черновик ждёт решения, это
+           не происшествие, и подсвечивать его как ошибку нельзя. #}
+        <tr class="{{ 'attention' if m.verdict == 'block' }}">
+          <td>
+            {% if m.sent_at %}<span class="dot ok" title="отправлено"></span>
+            {% elif m.verdict == 'block' %}<span class="dot danger" title="заблокировано"></span>
+            {% elif m.verdict == 'hold' %}<span class="dot warn" title="черновик"></span>
+            {% else %}<span class="dot" title="одобрено, ждёт отправки"></span>{% endif %}
+          </td>
+          <td class="tight">{{ m.created_at | dt }}</td>
+          <td class="tight">{{ m.audience }}<br><span class="mono">{{ m.channel_chat_id }}</span></td>
+          <td><span class="mono">{{ m.intent }}</span></td>
+          <td class="wrap">{{ (m.edited_text or m.text)[:160] }}</td>
+          <td class="tight">
+            {% if m.verdict == 'allow' %}<span class="pill ok">пропущено</span>
+            {% elif m.verdict == 'block' %}<span class="pill danger">заблокировано</span>
+            {% else %}<span class="pill warn">черновик</span>{% endif %}
+            {% if m.decision %}<span class="pill">{{ m.decision }}</span>{% endif %}
+          </td>
+          <td class="tight">{{ m.sent_at | dt }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

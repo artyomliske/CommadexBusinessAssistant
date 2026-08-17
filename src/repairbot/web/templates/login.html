@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+
+{% block auth %}
+<div class="auth">
+  <div class="box">
+    <h1>Вход в пульт</h1>
+    <p class="hint">Панель показывает переписку и персональные данные.</p>
+
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+    <form method="post" action="/login" autocomplete="on">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label>Логин
+        <input name="login" required autofocus autocapitalize="none" autocomplete="username">
+      </label>
+      <label>Пароль
+        <input name="password" type="password" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="primary">Войти</button>
+    </form>
+
+    <p class="foot"><code>python -m repairbot.cli create-user</code></p>
+  </div>
+</div>
+{% endblock %}

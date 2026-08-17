@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Чаты{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">{{ chats | length }} всего{% if problem_count %}, {{ problem_count }} с замечаниями{% endif %}</span>
+{% endblock %}
+
+{% block body %}
+<div class="panel">
+  {% if not chats %}
+    <div class="empty">
+      Чатов нет. Добавьте бота в рабочий чат — запись появится по событию <code>bot_added</code>.
+    </div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr><th></th><th>Чат</th><th>Канал</th><th>Объект</th>
+          <th class="num">Сообщений</th><th>Событие</th><th>Замечания</th></tr>
+    </thead>
+    <tbody>
+    {% for c in chats %}
+      <tr class="{{ '' if c.healthy else 'attention' }}">
+        <td><span class="dot {{ 'ok' if c.healthy else 'danger' }}"></span></td>
+        <td>{{ c.title or c.channel_chat_id }}<br>
+            <span class="mono">{{ c.channel_chat_id }} · {{ c.kind }}</span></td>
+        <td class="tight">{{ c.channel }}</td>
+        <td class="tight">{{ c.object_code or "—" }}</td>
+        <td class="num">{{ c.messages }}</td>
+        <td class="tight">{{ c.last_event_at | dt }}</td>
+        <td>
+          {% if c.healthy %}<span class="pill ok">в порядке</span>
+          {% else %}{% for p in c.problems %}<span class="pill danger">{{ p }}</span> {% endfor %}{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if problem_count %}
+<section>
+  <h2>Как исправить</h2>
+  <pre class="cmd">python -m repairbot.cli check-chat  # все чаты разом
+python -m repairbot.cli link-chat &lt;chat_id&gt; &lt;obj_code&gt;
+python -m repairbot.cli backfill &lt;chat_id&gt;</pre>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Расход{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">ориентир ТЗ: 8 000 – 18 000 ₽ в месяц</span>
+{% endblock %}
+
+{% block body %}
+<section>
+  <div class="metrics">
+    <div class="metric">
+      <span class="v">{{ '%.0f'|format(cost_24h) }} ₽</span><span class="k">за сутки</span>
+    </div>
+    <div class="metric">
+      <span class="v">{{ '%.0f'|format(cost_30d) }} ₽</span><span class="k">за 30 дней</span>
+    </div>
+    <div class="metric">
+      <span class="v">{{ '%.0f'|format(spend_24h.cache_hit_ratio * 100) }} %</span>
+      <span class="k">попаданий в кэш</span>
+    </div>
+    <div class="metric {{ 'hot' if spend_24h.degraded_calls }}">
+      <span class="v">{{ spend_24h.degraded_calls }}</span><span class="k">на резерве</span>
+    </div>
+  </div>
+</section>
+
+{% if spend_24h.degraded_calls %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span>Часть запросов обслужил резервный провайдер — качество извлечения там ниже.</span>
+</div>
+{% endif %}
+
+{% if spend_24h.calls and spend_24h.cache_hit_ratio < 0.3 %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>Кэш срабатывает реже 30 %. Обычная причина — изменилась стабильная часть промпта.</span>
+</div>
+{% endif %}
+
+<section>
+  <h2>Токены</h2>
+  <div class="panel">
+    <table class="data">
+      <thead><tr><th>Показатель</th><th class="num">Сутки</th><th class="num">30 дней</th></tr></thead>
+      <tbody>
+        <tr><td>Вызовов модели</td>
+            <td class="num">{{ spend_24h.calls }}</td><td class="num">{{ spend_30d.calls }}</td></tr>
+        <tr><td>Извлечено фактов</td>
+            <td class="num">{{ spend_24h.facts }}</td><td class="num">{{ spend_30d.facts }}</td></tr>
+        <tr><td>Входных</td>
+            <td class="num">{{ spend_24h.input_tokens | thousands }}</td>
+            <td class="num">{{ spend_30d.input_tokens | thousands }}</td></tr>
+        <tr><td>Из кэша</td>
+            <td class="num">{{ spend_24h.cached_input_tokens | thousands }}</td>
+            <td class="num">{{ spend_30d.cached_input_tokens | thousands }}</td></tr>
+        <tr><td>Исходящих</td>
+            <td class="num">{{ spend_24h.output_tokens | thousands }}</td>
+            <td class="num">{{ spend_30d.output_tokens | thousands }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">
+    Оценка приблизительная: ставки заданы для основного провайдера
+    ({{ settings.llm_model }}, {{ settings.llm_price_input_usd }}/{{ settings.llm_price_output_usd }} $
+    за млн, курс {{ settings.usd_rub_rate }} ₽).
+  </p>
+</section>
+
+<section>
+  <h2>Конфигурация</h2>
+  <div class="panel">
+    <table class="data">
+      <tbody>
+        <tr><td>Окружение</td><td>{{ settings.env }}</td></tr>
+        <tr><td>Модель</td><td>{{ settings.llm_model }} · effort {{ settings.llm_effort }}</td></tr>
+        <tr><td>Прокси</td><td>{{ settings.llm_base_url or "напрямую" }}</td></tr>
+        <tr><td>Резервный провайдер</td><td>{{ settings.llm_reserve_model or "не настроен" }}</td></tr>
+        <tr><td>Sheets</td>
+            <td>{{ "включён" if settings.sheets_enabled else "выключен" }}</td></tr>
+        <tr><td>Живость</td><td><a href="/readyz">/readyz</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if by_model %}
+<section>
+  <h2>По моделям за 30 дней</h2>
+  <div class="panel">
+    <table class="data">
+      <thead>
+        <tr><th>Модель</th><th class="num">Вызовов</th><th class="num">Токенов</th>
+            <th class="num">Стоимость</th></tr>
+      </thead>
+      <tbody>
+      {% for m in by_model %}
+        <tr>
+          <td>{{ m.title }}<br><span class="mono">{{ m.model }}</span></td>
+          <td class="num">{{ m.calls }}</td>
+          <td class="num">{{ (m.input_tokens + m.output_tokens) | thousands }}</td>
+          <td class="num">${{ '%.2f'|format(m.usd) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">
+    Каждая модель считается по своей ставке. Раньше здесь была одна ставка
+    на всех, и расход на дорогую модель занижался в разы — цифра выглядела
+    правдоподобной, и сверять её никто не шёл.
+  </p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,474 @@
+/* Рабочий пульт, а не документ.
+ *
+ * Три правила, из которых следует всё остальное:
+ *   1. Цвет означает состояние. Ничего не красится «для красоты» — если
+ *      элемент цветной, значит он требует внимания.
+ *   2. Меню слева и фиксировано. Верхняя строка меню при узком экране
+ *      переносится и выглядит сломанной; колонка — нет.
+ *   3. Плотность важнее воздуха. На это смотрят каждый день, и на экран
+ *      должно влезать много строк.
+ */
+
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --border: #e2e5ea;
+  --border-strong: #cdd2da;
+
+  --text: #10151d;
+  --text-dim: #626d7d;
+  --text-faint: #8d97a5;
+
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  /* Текст на акцентной заливке. В тёмной теме акцент светлеет, и белый
+     текст на нём даёт контраст около 2:1 — читать невозможно. */
+  --on-accent: #ffffff;
+
+  --danger: #c2410c;
+  --danger-soft: #fef2ec;
+  --warn: #a16207;
+  --warn-soft: #fefaec;
+  --ok: #15803d;
+  --ok-soft: #f0fdf4;
+
+  --radius: 8px;
+  --radius-sm: 5px;
+  --sidebar: 210px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116;
+    --surface: #161a21;
+    --surface-2: #1b2029;
+    --border: #262c37;
+    --border-strong: #37404f;
+
+    --text: #e7ebf0;
+    --text-dim: #96a1b1;
+    --text-faint: #6b7686;
+
+    --accent: #60a5fa;
+    --accent-soft: #16233a;
+    --on-accent: #0b1220;
+
+    --danger: #fb923c;
+    --danger-soft: #2a1a12;
+    --warn: #fbbf24;
+    --warn-soft: #291f0e;
+    --ok: #4ade80;
+    --ok-soft: #10241a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+/* ================= раскладка ================= */
+
+.shell { display: flex; min-height: 100%; }
+
+.side {
+  width: var(--sidebar);
+  flex: 0 0 var(--sidebar);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.side .brand {
+  padding: 16px 18px 14px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--border);
+}
+.side .brand small {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.side nav { padding: 10px 8px; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.side nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+.side nav a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.side nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+
+.side .who {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+/* Имя — ссылка на смену своего пароля. Отдельной строки в меню оно не
+   заслуживает, а искать эту страницу больше негде. */
+.side .who a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--border);
+}
+
+.content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.pagehead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 26px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.pagehead h1 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.pagehead .sub { color: var(--text-faint); font-size: 13px; }
+.pagehead .spacer { flex: 1; }
+
+main { padding: 20px 26px 60px; max-width: 1360px; }
+
+section + section { margin-top: 26px; }
+
+h2 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+}
+
+/* ================= показатели ================= */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* Разделители рисуем внутри ячеек, а не зазором сетки: при неполном
+     последнем ряду зазор просвечивал бы фоном и выглядел как пустая
+     серая клетка. */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.metric {
+  background: var(--surface);
+  box-shadow: inset -1px -1px 0 var(--border);
+  padding: 13px 16px;
+  color: var(--text);
+  display: block;
+}
+.metric:hover { background: var(--surface-2); text-decoration: none; }
+.metric .v {
+  display: block;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.metric .k {
+  display: block;
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 3px;
+}
+.metric.hot .v { color: var(--danger); }
+.metric.hot { background: var(--danger-soft); }
+
+/* ================= состояния ================= */
+
+.banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.banner.danger { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.banner.ok { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.banner b { font-weight: 600; }
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  display: inline-block; flex: 0 0 auto;
+  background: var(--text-faint);
+}
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.danger { background: var(--danger); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; line-height: 1.6;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.pill.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.pill.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+.pill.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
+
+.mono { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-faint); }
+
+/* ================= таблицы ================= */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* Прокрутка, а не обрезка: на узком экране широкая таблица иначе
+     теряет правые колонки без всякого признака, что они есть. */
+  overflow-x: auto;
+}
+
+table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.data th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+  white-space: nowrap;
+}
+table.data td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+table.data tbody tr:last-child td { border-bottom: none; }
+table.data tbody tr:hover td { background: var(--surface-2); }
+table.data tr.attention td { background: var(--danger-soft); }
+table.data tr.attention:hover td { background: var(--danger-soft); }
+table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data td.wrap { max-width: 520px; }
+table.data td.tight { white-space: nowrap; color: var(--text-dim); }
+table.data tr.more td { text-align: center; background: var(--surface-2); }
+
+/* Строка с действиями под своей записью. Линия между ними убирается:
+   иначе форма читается как относящаяся к следующей записи, а не к своей. */
+table.data tr:has(+ tr.sub-row) td { border-bottom: none; }
+table.data tr.sub-row td { padding-top: 0; }
+table.data tr.sub-row .row { margin-top: 0; }
+table.data tr.sub-row form { flex: 0 1 auto; }
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ================= карточки очередей ================= */
+
+.item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  margin-bottom: 10px;
+}
+.item.done { opacity: .4; }
+.item .meta {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 7px;
+  font-size: 12px; color: var(--text-faint);
+}
+.item .meta time { margin-left: auto; }
+.item .lead { font-size: 14.5px; margin: 0 0 8px; }
+.item .quote {
+  margin: 8px 0; padding: 7px 12px;
+  border-left: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-dim); font-size: 13px;
+}
+.item .why { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--text-dim); }
+.item .why li { margin: 2px 0; }
+
+.kv { display: flex; flex-wrap: wrap; gap: 3px 14px; margin: 8px 0 0; font-size: 12.5px; }
+.kv span { color: var(--text-faint); }
+.kv b { font-weight: 500; color: var(--text); }
+
+/* ================= формы ================= */
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 11px; }
+.row form { display: flex; gap: 6px; flex: 1 1 320px; min-width: 0; }
+.row input { flex: 1; min-width: 0; }
+
+input, select, button, textarea {
+  font: inherit; font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+input::placeholder { color: var(--text-faint); }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+button { cursor: pointer; white-space: nowrap; }
+button:hover { border-color: var(--border-strong); background: var(--surface-2); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--on-accent); font-weight: 500;
+}
+button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+button.danger { color: var(--danger); border-color: var(--danger); }
+button.plain {
+  background: none; border: none; padding: 0;
+  color: var(--accent); text-decoration: underline; font-size: 12.5px;
+}
+
+.filters {
+  display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+  padding: 12px 14px; margin-bottom: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.filters label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.filters label.check {
+  flex-direction: row; align-items: center; gap: 6px;
+  text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--text-dim);
+}
+/* Поля переменной длины тянутся, короткие остаются по содержимому.
+   Без этого форма из семи полей делит ширину поровну, и название
+   платежа получает столько же места, сколько «за сколько дней». */
+.filters label.grow { flex: 1 1 200px; }
+.filters label.grow input { width: 100%; }
+
+/* Обработанное гаснет. В очереди из двадцати карточек иначе не отличить
+   то, что уже сделано, от того, что ещё ждёт: результат подписан снизу,
+   но сама карточка выглядит нетронутой. С места не убираем — исчезающий
+   элемент сбивает прицел на следующий. */
+.resolved { opacity: .45; }
+
+.result:not(:empty) { margin-top: 8px; font-size: 12.5px; }
+.result .ok { color: var(--ok); }
+.result .fail { color: var(--danger); }
+
+/* ================= вход ================= */
+
+.auth {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.auth .box {
+  width: 100%; max-width: 330px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 26px;
+}
+.auth h1 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+.auth p.hint { color: var(--text-faint); font-size: 12.5px; margin: 0 0 18px; }
+/* Те же правила, что у входа, нужны и форме смены пароля — а она уже
+   внутри оболочки, не на странице входа. Поэтому селекторы общие. */
+.auth form, .form-card form { display: flex; flex-direction: column; gap: 11px; }
+.auth label, .form-card label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint);
+}
+.auth button, .form-card button { padding: 8px; margin-top: 4px; }
+.form-card { max-width: 330px; }
+
+/* Форма на всю ширину панели: у «Знаний» поле многострочное, и в
+   колонку 330 пикселей текст правила не читается. */
+.panel.pad > form > label {
+  display: flex; flex-direction: column; gap: 4px; margin-bottom: 11px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint);
+}
+.panel.pad > form > label textarea {
+  font: inherit; resize: vertical; min-height: 70px;
+}
+.auth .err {
+  background: var(--danger-soft); border: 1px solid var(--danger); color: var(--danger);
+  padding: 8px 11px; border-radius: var(--radius-sm); font-size: 12.5px; margin-bottom: 14px;
+}
+.auth .foot { margin-top: 16px; font-size: 11.5px; color: var(--text-faint); }
+
+/* ================= прочее ================= */
+
+.note { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li {
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+}
+ul.plain li:last-child { border-bottom: none; }
+
+pre.cmd {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  overflow-x: auto; color: var(--text-dim); margin: 0;
+}
+
+@media (max-width: 860px) {
+  .shell { flex-direction: column; }
+  .side {
+    width: 100%; flex: none; height: auto; position: static;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .side nav { flex-direction: row; overflow-x: auto; padding: 6px 8px; }
+  .side nav a { white-space: nowrap; }
+  .side .who { border-top: none; }
+  main, .pagehead { padding-left: 16px; padding-right: 16px; }
+  table.data td.wrap { max-width: none; }
+}

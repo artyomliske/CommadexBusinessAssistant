@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Файлы{% endblock %}
+{% block heading %}Файлы{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+{% if root_url %}
+<a class="pill" href="{{ root_url }}" target="_blank" rel="noopener">Архив на Диске ↗</a>
+{% endif %}
+<span class="sub">{{ files | length | count("файл") }}</span>
+{% endblock %}
+
+{% block body %}
+
+{% if not root_url %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>Диск не подключён.</b>
+    Вложения остаются только в мессенджере, а ссылки на них там живут
+    недолго. Подключение — раздел 6 в руководстве по развёртыванию.
+  </span>
+</div>
+{% endif %}
+
+{% if inbox %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>{{ inbox | count("файл") }} в папке «Без объекта».</b>
+    Объект их сообщений ещё не известен. Разберите их на странице
+    <a href="/unassigned">Разбор</a> — файлы переедут в папки объектов сами,
+    в ближайшие пять минут.
+  </span>
+</div>
+{% endif %}
+
+<div class="panel">
+  {% if not files %}
+    <div class="empty">
+      Ничего не сохранено. Файлы попадают сюда сами: вложение из чата
+      перекладывается на Диск заказчика раз в пять минут.
+    </div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr><th>Когда</th><th>Файл</th><th>Объект</th><th>Что это</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for f in files %}
+      <tr class="{{ 'attention' if f.in_inbox }}">
+        <td class="tight">{{ f.stored_at | dt }}</td>
+        <td class="wrap">
+          {{ f.summary or f.name or f.kind }}
+          {% if f.summary and f.name %}<br><span class="mono">{{ f.name }}</span>{% endif %}
+        </td>
+        <td class="tight">
+          {% if f.object_id %}
+            <a href="/objects/{{ f.object_id }}">{{ f.object_address }}</a>
+          {% else %}
+            <span class="pill">без объекта</span>
+          {% endif %}
+        </td>
+        <td class="tight">
+          {% if f.doc_class %}
+            <span class="pill">{{ doc_titles.get(f.doc_class, f.doc_class) }}</span>
+          {% else %}
+            <span class="sub">не разобран</span>
+          {% endif %}
+        </td>
+        <td class="tight">
+          {% if f.url %}<a href="{{ f.url }}" target="_blank" rel="noopener">открыть ↗</a>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<p class="note">
+  Ссылки ведут на Диск заказчика, а не к нам. Своей копии система не
+  держит намеренно: архив принадлежит ему и должен пережить и переписку,
+  и саму систему.
+</p>
+{% endblock %}

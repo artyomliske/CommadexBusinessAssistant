@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}События{% endblock %}
+
+{% block body %}
+<form class="filters" method="get" action="/feed">
+  <label>Объект
+    <select name="object_id" data-autosubmit>
+      <option value="">все</option>
+      {% for o in objects %}
+        <option value="{{ o.id }}" {{ 'selected' if filters.object_id == o.id }}>{{ o.code }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Тип
+    <select name="event_type" data-autosubmit>
+      <option value="">все</option>
+      {% for t in event_types %}
+        <option value="{{ t }}" {{ 'selected' if filters.event_type == t }}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="needs_human" value="true"
+           {{ 'checked' if filters.needs_human }} data-autosubmit>
+    требуют человека
+  </label>
+  <label class="check">
+    <input type="checkbox" name="facts_only" value="true"
+           {{ 'checked' if filters.facts_only }} data-autosubmit>
+    только факты
+  </label>
+  <noscript><button type="submit">Показать</button></noscript>
+</form>
+
+<div class="panel">
+  {% if not items %}
+    <div class="empty">Событий не найдено.</div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr><th></th><th>Время</th><th>Объект</th><th>Кто</th><th>Тип</th>
+          <th>Описание</th><th class="num">Дост.</th><th>Состояние</th></tr>
+    </thead>
+    <tbody id="feed-rows">
+      {% include "partials/feed_rows.html" %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

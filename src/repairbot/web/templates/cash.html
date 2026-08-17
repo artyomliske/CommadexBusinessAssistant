@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Касса{% endblock %}
+{% block heading %}Касса{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">за {{ days | count("день") }}</span>
+{% endblock %}
+
+{% block body %}
+
+<div class="metrics">
+  <div class="metric">
+    <span class="v">{{ balances.cash | round | int | thousands }} ₽</span>
+    <span class="k">остаток наличных</span>
+  </div>
+  <div class="metric">
+    <span class="v">{{ balances.by_object.values() | sum | round | int | thousands }} ₽</span>
+    <span class="k">вложено в объекты</span>
+  </div>
+  <div class="metric {{ 'hot' if balances.by_person }}">
+    <span class="v">{{ balances.by_person.values() | sum | round | int | thousands }} ₽</span>
+    <span class="k">не закрыто подотчётом</span>
+  </div>
+  <div class="metric {{ 'hot' if balances.pending }}">
+    <span class="v">{{ balances.pending }}</span>
+    <span class="k">ждут подтверждения</span>
+  </div>
+</div>
+
+{% if balances.unassigned_amount %}
+<p class="note">
+  На {{ balances.unassigned_amount | round | int | thousands }} ₽ не указано,
+  наличными или безналом. В остаток кассы это не вошло: приписать
+  неизвестное к наличным значит показать деньги, которых может не быть.
+</p>
+{% endif %}
+
+{% if not balances.movements %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>Денежных записей нет.</b>
+    Они появляются сами из переписки — «взял с кассы», «выдал займ»,
+    «приход с Пашковки». Если чат читается, а записей нет, проверьте
+    <a href="/knowledge">Знания</a>: возможно, системе не хватает
+    объяснения, что у вас называется кассой.
+  </span>
+</div>
+{% endif %}
+
+{% if balances.by_object %}
+<section>
+  <h2>Вложено в объекты</h2>
+  <div class="panel">
+    <table class="data">
+      <thead><tr><th>Объект</th><th class="num">Сумма</th></tr></thead>
+      <tbody>
+      {% for code, amount in balances.by_object.items() | sort(attribute='1', reverse=true) %}
+        <tr>
+          <td>{{ code }}</td>
+          <td class="num">{{ amount | round | int | thousands }} ₽</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">
+    Займы, выданные объекту, минус приходы с него. Положительное число —
+    объект ещё не вернул вложенное.
+  </p>
+</section>
+{% endif %}
+
+{% if balances.by_person %}
+<section>
+  <h2>Подотчёт</h2>
+  <div class="panel">
+    <table class="data">
+      <thead><tr><th>Кто</th><th class="num">Не закрыто</th></tr></thead>
+      <tbody>
+      {% for who, amount in balances.by_person.items() | sort(attribute='1', reverse=true) %}
+        <tr class="{{ 'attention' if amount > 0 }}">
+          <td>{{ who }}</td>
+          <td class="num">{{ amount | round | int | thousands }} ₽</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Выдано минус возвращено. По чекам это не сверяется — только по записям в чатах.</p>
+</section>
+{% endif %}
+
+<section>
+  <h2>Движение</h2>
+  <div class="panel">
+    {% if not balances.movements %}
+      <div class="empty">Пока пусто.</div>
+    {% else %}
+    <table class="data">
+      <thead>
+        <tr><th>Когда</th><th></th><th class="num">Сумма</th><th>Откуда</th>
+            <th>Вид</th><th>Объект</th><th>Что</th></tr>
+      </thead>
+      <tbody>
+      {% for m in balances.movements %}
+        <tr class="{{ 'attention' if not m.applied }}">
+          <td class="tight">{{ m.at | dt }}</td>
+          <td>
+            {% if m.direction == 'in' %}<span class="dot ok" title="приход"></span>
+            {% else %}<span class="dot warn" title="расход"></span>{% endif %}
+          </td>
+          <td class="num">
+            {% if m.amount %}{{ m.amount | round | int | thousands }} ₽{% else %}—{% endif %}
+          </td>
+          <td class="tight">{{ m.account_title }}</td>
+          <td class="tight">{{ m.kind_title }}</td>
+          <td class="tight">{{ m.object_code or "—" }}</td>
+          <td class="wrap">
+            {{ m.summary }}
+            {% if not m.applied %}<br><span class="pill warn">ждёт подтверждения</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</section>
+
+<p class="note">
+  Ничего из этого не хранится отдельно: все числа складываются из журнала
+  при каждом открытии страницы. Отдельно хранимый остаток был бы второй
+  правдой, и рано или поздно он разошёлся бы с первой — а заметили бы это
+  на пересчёте наличных.
+</p>
+{% endblock %}

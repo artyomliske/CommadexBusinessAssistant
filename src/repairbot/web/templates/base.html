@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Пульт{% endblock %} · Ремонт</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+  <script src="/static/app.js?v={{ asset_version }}" defer></script>
+</head>
+<body>
+{% if user %}
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="/">Ремонт<small>пульт наблюдения</small></a>
+    <nav>
+      <a href="/" class="{{ 'on' if request.url.path == '/' }}">Обзор</a>
+      <a href="/pending" class="{{ 'on' if request.url.path == '/pending' }}">Подтверждение</a>
+      <a href="/drafts" class="{{ 'on' if request.url.path == '/drafts' }}">Черновики</a>
+      <a href="/feed" class="{{ 'on' if request.url.path.startswith('/feed') }}">События</a>
+      <a href="/unassigned" class="{{ 'on' if request.url.path.startswith('/unassigned') }}">Разбор</a>
+      <a href="/objects" class="{{ 'on' if request.url.path == '/objects' }}">Объекты</a>
+      <a href="/files" class="{{ 'on' if request.url.path == '/files' }}">Файлы</a>
+      <a href="/knowledge" class="{{ 'on' if request.url.path == '/knowledge' }}">Знания</a>
+      <a href="/chats" class="{{ 'on' if request.url.path == '/chats' }}">Чаты</a>
+      <a href="/people" class="{{ 'on' if request.url.path.startswith('/people') }}">Люди</a>
+      <a href="/cash" class="{{ 'on' if request.url.path == '/cash' }}">Касса</a>
+      <a href="/payments" class="{{ 'on' if request.url.path.startswith('/payments') }}">Платежи</a>
+      <a href="/health" class="{{ 'on' if request.url.path == '/health' }}">Расход</a>
+    </nav>
+    <form class="who" method="post" action="/logout">
+      <a href="/password" title="Роль: {{ user.role }} · сменить пароль">{{ user.display_name }}</a>
+      <button type="submit" class="plain">выйти</button>
+    </form>
+  </aside>
+
+  <div class="content">
+    <div class="pagehead">
+      <h1>{% block heading %}{{ self.title() }}{% endblock %}</h1>
+      {% block headextra %}{% endblock %}
+    </div>
+    <main>
+      {% block body %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% block auth %}{% endblock %}
+{% endif %}
+</body>
+</html>

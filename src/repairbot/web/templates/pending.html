@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Подтверждение{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">{{ pending | length }} в очереди</span>
+{% endblock %}
+
+{% block body %}
+{% if not user.can_review %}
+<div class="banner"><span class="dot"></span><span>Роль {{ user.role }} — только просмотр.</span></div>
+{% endif %}
+
+{% if not pending %}
+  <div class="panel"><div class="empty">Очередь пуста.</div></div>
+{% else %}
+  {% for p in pending %}
+  <article class="item" id="pending-{{ p.event_id }}">
+    <div class="meta">
+      <span class="mono">{{ p.fact_type }}</span>
+      {% if p.object_code %}
+        <a href="/objects/{{ p.object_id }}">{{ p.object_code }}</a>
+      {% else %}
+        <span class="pill danger">без объекта</span>
+      {% endif %}
+      {% if p.confidence is not none %}
+        <span class="pill {{ 'warn' if p.confidence < p.threshold }}">
+          {{ '%.2f'|format(p.confidence) }} / {{ '%.2f'|format(p.threshold) }}
+        </span>
+      {% endif %}
+      <time>{{ p.occurred_at | dt }}</time>
+    </div>
+
+    <p class="lead">{{ p.summary }}</p>
+
+    {% if p.source_text %}
+      <div class="quote">{{ p.source_text }}
+        {% if p.source_message_id %}<br><span class="mono">{{ p.source_message_id }}</span>{% endif %}
+      </div>
+    {% endif %}
+
+    {% set fields = [] %}
+    {% for key in ["item", "qty", "unit", "amount", "currency", "stage", "room", "status", "due_date"] %}
+      {% if p.payload.get(key) is not none %}{% set _ = fields.append((key, p.payload[key])) %}{% endif %}
+    {% endfor %}
+    {% if fields %}
+      <div class="kv">
+        {% for key, value in fields %}<span>{{ key }}</span><b>{{ value }}</b>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if user.can_review %}
+    <div class="row">
+      <form method="post" action="/pending/{{ p.event_id }}/confirm"
+            data-replace="#result-{{ p.event_id }}" data-remove="#pending-{{ p.event_id }}">
+        <input name="correction" placeholder="уточнение" maxlength="500">
+        <button type="submit" class="primary">Применить</button>
+      </form>
+      <form method="post" action="/pending/{{ p.event_id }}/reject"
+            data-replace="#result-{{ p.event_id }}" data-remove="#pending-{{ p.event_id }}">
+        <input name="reason" placeholder="почему неверно" maxlength="500">
+        <button type="submit">Отклонить</button>
+      </form>
+    </div>
+    <div class="result" id="result-{{ p.event_id }}"></div>
+    {% endif %}
+  </article>
+  {% endfor %}
+{% endif %}
+{% endblock %}

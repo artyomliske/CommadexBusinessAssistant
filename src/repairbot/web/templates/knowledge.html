@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Знания{% endblock %}
+{% block heading %}Знания{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">
+  {{ notes | length | count("запись") }}, {{ used }} из {{ limit }} символов
+</span>
+{% endblock %}
+
+{% block body %}
+
+<div class="banner">
+  <span class="dot"></span>
+  <span>
+    Здесь вы объясняете системе то, чего нет в переписке. В чатах не пишут,
+    что «касса» — это наличные в офисе или что подотчёт выдают под чеки:
+    все и так знают. Модель — нет.
+  </span>
+</div>
+
+{% if message %}
+<div class="banner {{ 'ok' if ok else 'danger' }}">{{ message }}</div>
+{% endif %}
+
+{% if used > limit %}
+<div class="banner danger">
+  <span class="dot warn"></span>
+  <span>
+    Знаний больше, чем помещается в контекст. Лишнее в конце списка
+    помощнику не достаётся — выключите то, что уже неактуально.
+  </span>
+</div>
+{% endif %}
+
+{% if user.can_review %}
+<div class="panel pad">
+  <form method="post" action="/knowledge">
+    <label>Заголовок
+      <input name="title" required maxlength="200" placeholder="Например: что такое касса">
+    </label>
+    <label>Что нужно знать
+      <textarea name="body" required rows="4" maxlength="{{ body_limit }}"
+                placeholder="Касса — наличные в офисе. Из неё берут на текущие расходы и записывают в чат «Заказ Денег»."></textarea>
+    </label>
+    <button type="submit" class="primary">Добавить</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="panel">
+  {% if not notes %}
+    <div class="empty">
+      Пока ничего не записано. Начните с того, что чаще всего приходится
+      объяснять новому сотруднику в первую неделю.
+    </div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr><th></th><th>Заголовок</th><th>Что знает</th><th>Кто внёс</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for n in notes %}
+      <tr class="{{ '' if n.active else 'sub-row' }}">
+        <td>
+          {% if n.active %}<span class="dot ok" title="в работе"></span>
+          {% else %}<span class="dot" title="выключено"></span>{% endif %}
+        </td>
+        <td class="tight">{{ n.title }}</td>
+        <td class="wrap">{{ n.body }}</td>
+        <td class="tight">{{ n.created_by or "—" }}<br>
+            <span class="mono">{{ n.updated_at | dt }}</span></td>
+        <td class="tight">
+          {% if user.can_review %}
+          <div class="row">
+            <form method="post" action="/knowledge/{{ n.id }}/toggle">
+              <button type="submit" class="plain">{{ "выключить" if n.active else "включить" }}</button>
+            </form>
+            <form method="post" action="/knowledge/{{ n.id }}/delete">
+              <button type="submit" class="plain" title="удалить насовсем">×</button>
+            </form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<p class="note">
+  Записи уходят помощнику как есть, слово в слово. Пишите так, как
+  объяснили бы человеку: короткими утверждениями, по одному правилу на
+  запись. Одна запись на десять правил хуже — её нельзя выключить
+  частично.
+</p>
+
+<p class="note">
+  Это не то же самое, что <a href="/objects">названия объектов</a>. Там
+  строгий справочник, по которому система сопоставляет адреса в тексте;
+  здесь — свободные пояснения, которые ни с чем не сопоставляются и
+  нужны только для понимания.
+</p>
+{% endblock %}

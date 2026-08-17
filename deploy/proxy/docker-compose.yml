@@ -1,0 +1,27 @@
+name: repairbot-proxy
+
+# Единственная задача зарубежного сервера: пропускать наружу то, что
+# недоступно с российского адреса, — OpenRouter и Google API.
+#
+# Пароль и ограничение по адресу нужны оба. Открытый прокси находят
+# сканерами за часы, и платить за чужой трафик будет владелец.
+
+services:
+  proxy:
+    image: ubuntu/squid:latest
+    restart: unless-stopped
+    ports:
+      # Порт снаружи вынесен в переменную. Привычный 3128 фильтруют и
+      # хостеры, и операторы: у зарубежного сервера соединение на него
+      # из России молча гасится, и снаружи это неотличимо от упавшего
+      # прокси. 443 проходит везде — он неотличим от обычного HTTPS,
+      # а веб-сервера на этой машине нет и не будет.
+      - "${PROXY_PORT:-443}:3128"
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+      - ./passwd:/etc/squid/passwd:ro
+    healthcheck:
+      test: ["CMD-SHELL", "squidclient -h 127.0.0.1 mgr:info > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

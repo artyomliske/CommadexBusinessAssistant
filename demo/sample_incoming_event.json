@@ -1,0 +1,10 @@
+{
+  "channel": "telegram",
+  "channel_chat_id": "demo-chat-oak-house",
+  "channel_message_id": "demo-message-001",
+  "sender_name": "Alex Morgan",
+  "text": "Delivery for Oak House unit 12 is expected tomorrow morning. Please add this to the project timeline.",
+  "occurred_at": "2026-08-17T09:30:00+00:00",
+  "attachments": [],
+  "metadata": {"demo": true, "object_alias": "Oak House / Unit 12"}
+}

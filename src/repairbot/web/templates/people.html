@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Люди{% endblock %}
+{% block heading %}Люди{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">{{ identities | length | count("запись") }}{% if unassigned %}, {{ unassigned }} без роли{% endif %}</span>
+{% endblock %}
+
+{% block body %}
+
+{% if unassigned %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>{{ unassigned | count("запись") }} без роли.</b>
+    Пока роль не назначена, система считает автора заказчиком — в личном
+    диалоге он получит автоответ. Для бригады это почти наверняка не то,
+    чего вы хотите.
+  </span>
+</div>
+{% endif %}
+
+<div class="panel">
+  {% if not identities %}
+    <div class="empty">
+      Учётных записей нет. Они появляются сами, как только человек напишет
+      в чат, где есть бот.
+    </div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr>
+        <th></th><th>Кто</th><th>Канал</th><th>Где пишет</th>
+        <th class="num">Сообщений</th><th>Последнее</th><th>Роль</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in identities %}
+      <tr id="identity-{{ i.id }}" class="{{ 'attention' if not i.is_linked and not i.is_bot }}">
+        <td>
+          {% if i.is_bot %}<span class="dot"></span>
+          {% elif i.is_linked %}<span class="dot ok"></span>
+          {% else %}<span class="dot warn"></span>{% endif %}
+        </td>
+        <td>
+          {{ i.person_name or i.display_name or i.username or "без имени" }}
+          {% if i.person_name and i.display_name and i.person_name != i.display_name %}
+            <br><span class="mono">в мессенджере: {{ i.display_name }}</span>
+          {% endif %}
+        </td>
+        <td class="tight">{{ i.channel }}<br><span class="mono">{{ i.channel_user_id }}</span></td>
+        <td class="wrap">
+          {% if i.objects %}{{ i.objects | join(", ") }}{% endif %}
+          {% if i.dialogs %}{% if i.objects %} · {% endif %}личный диалог{% endif %}
+          <br><span class="mono">{{ i.hint }}</span>
+        </td>
+        <td class="num">{{ i.messages }}</td>
+        <td class="tight">{{ i.last_seen_at | dt }}</td>
+        <td>
+          {% if i.is_linked %}
+            <span class="pill {{ 'ok' if i.role != 'unknown' }}">{{ role_titles[i.role] }}</span>
+          {% else %}
+            <span class="pill">не определена</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% if user.can_review and not i.is_bot %}
+      <tr class="sub-row {{ 'attention' if not i.is_linked and not i.is_bot }}">
+        <td></td>
+        <td colspan="6">
+          <div class="row">
+            <form method="post" action="/people/{{ i.id }}/assign"
+                  data-replace="#result-identity-{{ i.id }}"
+                  data-remove="#identity-{{ i.id }}">
+              <input name="display_name" maxlength="200"
+                     placeholder="имя{% if i.display_name %} ({{ i.display_name }}){% endif %}">
+              <select name="role">
+                {% for r in roles %}
+                <option value="{{ r }}" {{ 'selected' if r == i.role }}>{{ role_titles[r] }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="primary">Сохранить</button>
+            </form>
+            {% if i.is_linked %}
+            <form method="post" action="/people/{{ i.id }}/unlink"
+                  data-replace="#result-identity-{{ i.id }}"
+                  data-remove="#identity-{{ i.id }}">
+              <button type="submit">Снять роль</button>
+            </form>
+            {% endif %}
+          </div>
+          <div class="result" id="result-identity-{{ i.id }}"></div>
+        </td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<p class="note">
+  Роль назначает человек, а не система. Соблазн «кто пишет в рабочем чате —
+  тот сотрудник» велик, но именно роль решает, уйдёт ли заказчику автоответ,
+  и ошибка здесь стоит дороже минуты вашей работы. Подсказка в колонке
+  «где пишет» — это подсказка, а не решение.
+</p>
+
+<p class="note">
+  Карточка человека объединяет его учётные записи в разных мессенджерах:
+  один и тот же прораб в MAX и в Telegram должен быть для системы одним
+  человеком, иначе она не свяжет его сообщения.
+</p>
+{% endblock %}

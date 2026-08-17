@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Платежи{% endblock %}
+{% block heading %}Платёжный календарь{% endblock %}
+
+{% block headextra %}
+<span class="spacer"></span>
+<span class="sub">{{ items | length | count("платёж") }} в ближайшие недели{% if overdue %}, {{ overdue }} просрочено{% endif %}</span>
+{% endblock %}
+
+{% block body %}
+
+{% if overdue %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span><b>{{ overdue | count("платёж") }} просрочено.</b>
+    Подписки отключаются без предупреждения, а пени по налогам считаются со дня просрочки.</span>
+</div>
+{% endif %}
+
+<div class="panel">
+  {% if not items %}
+    <div class="empty">
+      Платежей нет. Добавьте подписки, связь, аренду — то, о чём легко забыть,
+      пока оно не отключится.
+    </div>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr>
+        <th></th><th>Платёж</th><th>Категория</th><th class="num">Сумма</th>
+        <th>Срок</th><th>Периодичность</th><th>Заметка</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in items %}
+      {% set p = i.payment %}
+      <tr id="payment-{{ p.id }}" class="{{ 'attention' if i.is_overdue }}">
+        <td>
+          {% if i.is_overdue %}<span class="dot danger"></span>
+          {% elif i.days_left <= p.notify_days_before %}<span class="dot warn"></span>
+          {% else %}<span class="dot ok"></span>{% endif %}
+        </td>
+        <td>{{ p.title }}</td>
+        <td class="tight">{{ categories | selectattr("0", "equalto", p.category) | map(attribute="1") | first | default(p.category) }}</td>
+        <td class="num">
+          {% if p.amount is not none %}{{ p.amount | thousands }} {{ p.currency }}
+          {% else %}<span class="muted">по счёту</span>{% endif %}
+        </td>
+        <td class="tight">
+          {{ p.next_due_on | day }}<br>
+          <span class="mono">
+            {% if i.is_overdue %}просрочен на {{ (-i.days_left) | count("день") }}
+            {% elif i.is_today %}сегодня
+            {% else %}через {{ i.days_left | count("день") }}{% endif %}
+          </span>
+        </td>
+        <td class="tight">{{ periods | selectattr("0", "equalto", p.period) | map(attribute="1") | first | default(p.period) }}</td>
+        <td class="wrap">{{ p.note or "" }}
+          {% if p.last_paid_on %}<br><span class="mono">оплачен {{ p.last_paid_on | day }}</span>{% endif %}
+        </td>
+      </tr>
+      {% if user.can_review %}
+      <tr class="sub-row {{ 'attention' if i.is_overdue }}">
+        <td></td>
+        <td colspan="6">
+          <div class="row">
+            <form method="post" action="/payments/{{ p.id }}/paid"
+                  data-replace="#result-payment-{{ p.id }}"
+                  data-remove="#payment-{{ p.id }}">
+              <button type="submit" class="primary">Оплачено</button>
+            </form>
+            <form method="post" action="/payments/{{ p.id }}/archive"
+                  data-replace="#result-payment-{{ p.id }}"
+                  data-remove="#payment-{{ p.id }}">
+              <button type="submit">Снять с календаря</button>
+            </form>
+          </div>
+          <div class="result" id="result-payment-{{ p.id }}"></div>
+        </td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if user.can_review %}
+<section>
+  <h2>Добавить платёж</h2>
+  <form method="post" action="/payments/new" class="filters" data-replace="#result-new">
+    <label class="grow">Название
+      <input name="title" placeholder="Мобильная связь МТС" maxlength="200" required>
+    </label>
+    <label>Сумма
+      <input name="amount" placeholder="необязательно" inputmode="decimal" size="10">
+    </label>
+    <label>Ближайший срок
+      <input name="next_due_on" type="date" value="{{ today }}" required>
+    </label>
+    <label>Периодичность
+      <select name="period">
+        {% for value, title in periods %}
+        <option value="{{ value }}" {{ 'selected' if value == 'monthly' }}>{{ title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Категория
+      <select name="category">
+        {% for value, title in categories %}
+        <option value="{{ value }}">{{ title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Напомнить за, дней
+      <input name="notify_days_before" type="number" min="0" max="60" value="3" size="4">
+    </label>
+    <label class="grow">Заметка
+      <input name="note" placeholder="с какой карты, кто отвечает" maxlength="500">
+    </label>
+    <button type="submit" class="primary">Добавить</button>
+  </form>
+  <div class="result" id="result-new"></div>
+  <p class="note">
+    Сумму можно не указывать: связь по факту и коммунальные по счётчику
+    заранее не известны — в напоминании будет «сумма по счёту».
+  </p>
+</section>
+{% endif %}
+
+<p class="note">
+  Напоминание приходит в MAX раз в сутки, за указанное число дней до срока
+  и отдельно при просрочке. Это собственные расходы компании; к сметам
+  объектов календарь отношения не имеет.
+</p>
+
+<p class="note">
+  День месяца запоминается отдельно от даты. Платёж 31-го числа в феврале
+  придётся на 28-е, но в марте вернётся на 31-е, а не останется 28-м.
+</p>
+{% endblock %}

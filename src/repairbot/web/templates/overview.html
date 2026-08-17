@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Обзор{% endblock %}
+
+{% block body %}
+
+{# Сначала то, что ждёт человека, потом всё остальное. Обзор открывают,
+   чтобы узнать, есть ли дела, — и ответ должен быть виден сразу. #}
+<section>
+  <div class="metrics">
+    <a class="metric {{ 'hot' if overview.drafts_waiting }}" href="/drafts">
+      <span class="v">{{ overview.drafts_waiting }}</span>
+      <span class="k">черновики в очереди</span>
+    </a>
+    <a class="metric {{ 'hot' if overview.pending_total }}" href="/pending">
+      <span class="v">{{ overview.pending_total }}</span>
+      <span class="k">факты на подтверждение</span>
+    </a>
+    <a class="metric {{ 'hot' if overview.payments_overdue }}" href="/payments">
+      <span class="v">{{ overview.payments_overdue or overview.payments_soon }}</span>
+      <span class="k">{{ "платежи просрочены" if overview.payments_overdue else "платежи на подходе" }}</span>
+    </a>
+    <a class="metric {{ 'hot' if overview.unhealthy_chats }}" href="/chats">
+      <span class="v">{{ overview.unhealthy_chats }}</span>
+      <span class="k">чаты с замечаниями</span>
+    </a>
+    <a class="metric" href="/feed">
+      <span class="v">{{ overview.events_24h }}</span>
+      <span class="k">события за сутки</span>
+    </a>
+    <a class="metric" href="/health">
+      <span class="v">{{ overview.spend_24h.calls }}</span>
+      <span class="k">вызовы модели</span>
+    </a>
+  </div>
+</section>
+
+{% if not overview.needs_you %}
+<div class="banner ok">
+  <span class="dot ok"></span>
+  <span>Ничего не ждёт вашего решения.</span>
+</div>
+{% endif %}
+
+{% if overview.orphan_chats %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span>
+    <b>{{ overview.orphan_chats | count("чат") }} без объекта.</b>
+    Их события не попадут ни в одну таблицу. <a href="/chats">Разобрать</a>
+  </span>
+</div>
+{% endif %}
+
+{% if overview.archive_failed %}
+<div class="banner danger">
+  <span class="dot danger"></span>
+  <span>
+    <b>{{ overview.archive_failed | count("вложение") }} не переложено на Диск.</b>
+    Сами они уже не переложатся: причина записана в карточке вложения.
+    Обычно это слишком большой файл или протухшая ссылка.
+  </span>
+</div>
+{% elif overview.archive_pending %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>{{ overview.archive_pending | count("вложение") }} ждёт переноса на Диск.</span>
+</div>
+{% endif %}
+
+{% if overview.documents_failed %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>{{ overview.documents_failed | count("документ") }} не удалось разобрать.</b>
+    Файлы на Диске, но суммы с них не сняты — если среди них чеки,
+    расход по объекту занижен.
+  </span>
+</div>
+{% endif %}
+
+{% if overview.people_unassigned %}
+<div class="banner">
+  <span class="dot warn"></span>
+  <span>
+    <b>{{ overview.people_unassigned | count("запись") }} без роли.</b>
+    Пока роль не назначена, система считает автора заказчиком и может
+    ответить ему автоматически. <a href="/people">Разобрать</a>
+  </span>
+</div>
+{% endif %}
+
+<section>
+  <h2>Объекты</h2>
+  <div class="panel">
+    {% if not overview.objects %}
+      <div class="empty">
+        Объектов нет.<br>
+        <code>python -m repairbot.cli create-object obj_1 "адрес"</code>
+      </div>
+    {% else %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th></th><th>Объект</th><th>Адрес</th><th>Этап</th>
+          <th class="num">Чатов</th><th class="num">Сутки</th>
+          <th class="num">Ждут</th><th class="num">Вопросы</th>
+          <th>Событие</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for o in overview.objects %}
+        <tr class="{{ 'attention' if o.is_stale or o.pending_confirmations }}">
+          <td><span class="dot {{ 'danger' if o.is_stale else 'ok' }}"
+                    title="{{ 'нет событий больше двух суток' if o.is_stale else 'активен' }}"></span></td>
+          <td><a href="/objects/{{ o.id }}">{{ o.code }}</a></td>
+          <td>{{ o.address }}</td>
+          <td>{{ o.current_stage or "—" }}</td>
+          <td class="num">{{ o.chats }}</td>
+          <td class="num">{{ o.events_24h }}</td>
+          <td class="num">{{ o.pending_confirmations or "—" }}</td>
+          <td class="num">{{ o.open_issues or "—" }}</td>
+          <td class="tight">{{ o.last_event_at | dt }}</td>
+          <td class="tight">
+            {% if o.spreadsheet_id %}
+              <a href="https://docs.google.com/spreadsheets/d/{{ o.spreadsheet_id }}"
+                 target="_blank" rel="noopener">таблица</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  <p class="note">Красная точка — больше двух суток без событий.</p>
+</section>
+{% endblock %}

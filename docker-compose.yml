@@ -1,0 +1,124 @@
+name: repairbot
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-repairbot}
+      POSTGRES_USER: ${POSTGRES_USER:-repairbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Только петля. Docker правит iptables мимо ufw, поэтому «ufw deny»
+      # опубликованный порт не закрывает: без явного 127.0.0.1 база с
+      # паролем висела бы прямо в интернете.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-repairbot} -d ${POSTGRES_DB:-repairbot}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      # Redis без пароля. Наружу его выпускать нельзя (см. postgres).
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: .
+    command: ["alembic", "upgrade", "head"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    volumes:
+      # httpx берёт связку из certifi, а не из системного хранилища,
+      # поэтому обновления ca-certificates ему мало: клиент читает
+      # сертификаты отсюда сам (см. channels/max/client.py).
+      - ./certs:/app/certs:ro
+      - ./secrets:/app/secrets
+    command: ["uvicorn", "repairbot.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      # Наружу приложение выходит только через Caddy, который добавляет
+      # HTTPS. Открытый 8000 означал бы вход в панель по http в обход
+      # сертификата — с паролем, летящим по сети как есть.
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    volumes:
+      # httpx берёт связку из certifi, а не из системного хранилища,
+      # поэтому обновления ca-certificates ему мало: клиент читает
+      # сертификаты отсюда сам (см. channels/max/client.py).
+      - ./certs:/app/certs:ro
+      - ./secrets:/app/secrets
+    command: ["arq", "repairbot.worker.WorkerSettings"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2-alpine
+    # Профиль, а не отдельный файл: на сервере в .env стоит
+    # COMPOSE_PROFILES=web, локально его нет — и Caddy не пытается
+    # занять 80 и 443 на машине разработчика.
+    profiles: ["web"]
+    restart: unless-stopped
+    # env_file здесь был бы ошибкой: из .env прилетели бы HTTPS_PROXY и
+    # HTTP_PROXY, и Caddy пошёл бы за сертификатом через squid, где
+    # Let's Encrypt в список разрешённых узлов не входит.
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Выданные сертификаты переживают пересборку. Без этого тома
+      # каждый перезапуск был бы новой заявкой в Let's Encrypt, а там
+      # ограничение на неделю — и однажды сертификата просто не будет.
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:
