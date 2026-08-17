@@ -7,7 +7,7 @@
 |---|---|| 
 | Privacy by design | | | | | | 
 ## 
-```mermaid
+```
 flowchart TD
     A[Channels] --> B[Webhooks]
     B --> C[Events]
@@ -20,7 +20,7 @@ flowchart TD
     I --> A
     G --> J[Operations Panel]
     G --> K[Drive Sheets]
-```    G --> K[    G --> J[
+```
 
 
 ## Portfolio demo
@@ -29,7 +29,7 @@ flowchart TD
 
 ## 
 
-```bash
+```
 make install
 make test
 make lint
