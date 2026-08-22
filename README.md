@@ -93,4 +93,4 @@ Portfolio-снимок проверен полным набором из **754 �
 
 ## Полный кейс
 
-[Открыть кейс Commandex в портфолио →](https://artyomliske.github.io/#case-commandex)
+[Открыть кейс Commandex в портфолио →](https://artyomliske.ru/#case-commadex)
